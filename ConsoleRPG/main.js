@@ -131,19 +131,35 @@ LoginUI.prototype.getInterface = function(){
 
 function Match(mpMatch){
 	this.mpMatch = mpMatch;
+	this.localPlayer = new PlayerModel();
+	this.opponent = new PlayerModel();
+	
 	this.mpMatch.onTurnChanged(function(player){
 		console.log("Changed turn to: " + player.name);
+	});
+	this.mpMatch.onStateChanged("players/" + this.mpMatch.localPlayerId, function(data){
+		this.localPlayer.update(data);
 	});
 }
 Match.prototype.leave = function(){
 	this.mpMatch.leave();
 };
+Match.prototype.localPlayerInfo = function(){
+	console.log(this.localPlayer);
+}
 
 function PlayerModel(){
 	this.health;
 	this.abilities;
-	this.items;
 	this.attributes;
+}
+PlayerModel.prototype.update = function(data){
+	this.health = data.health;
+	this.abilities = data.abilities;
+	this.attributes = data.attributes;
+};
+PlayerModel.prototype.toString = function(){
+	
 }
 
 
