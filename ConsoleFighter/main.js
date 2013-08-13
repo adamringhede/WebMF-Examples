@@ -51,9 +51,10 @@ IngameUI.prototype.getInterface = function(){
 		exitToMenu: this.exitToMenu.bind(this),
 		me: this.match.localPlayerInfo.bind(this.match),
 		opponent: this.match.opponentInfo.bind(this.match),
-		strike: this.match.action.bind(this.match),
+		strike: this.match.strike.bind(this.match),
 		match: this.match,
-		turn: function(){},
+		turn: this.match.whoseTurnIsIt.bind(this.match),
+		pass: this.match.pass.bind(this.match),
 		help: function() {
 			console.log(".me         Return information on the local player.");
 			console.log(".opponent   Return information on the other player.");
@@ -64,11 +65,15 @@ IngameUI.prototype.getInterface = function(){
 };
 IngameUI.prototype.exitToMenu = function(){
 	this.match.leave();
-	delete this.match;
+	this.match = null;
 	if (this.onExit) this.onExit();
 };
 IngameUI.prototype.setMatch = function(m){
 	this.match = m;
+	var self = this;
+	this.match.onCloseMatch = function(){
+		self.exitToMenu();
+	};
 }
 
 function MenuUI(session, callbacks){
@@ -78,7 +83,7 @@ function MenuUI(session, callbacks){
 }
 MenuUI.prototype.logout = function(){
 	this.session.disconnect();
-	delete this.session;
+	this.session = null;
 	if (this.onLogout) this.onLogout();
 };
 MenuUI.prototype.findMatch = function(){
@@ -94,8 +99,7 @@ MenuUI.prototype.findMatch = function(){
 			console.log("Put in queue");
 		},
 		onMatchFound: function(mpMatch){
-			var match = new Match(mpMatch);
-			self.onJoinMatch(match);
+			self.onJoinMatch(new Match(mpMatch));
 		}
 	});
 };
@@ -133,19 +137,24 @@ LoginUI.prototype.getInterface = function(){
 function Match(mpMatch){
 	var self = this;
 	this.mpMatch = mpMatch;
+	this.hasEnded = false;
+	this.onCloseMatch = function(){};
 	this.localPlayer = new PlayerModel(this.mpMatch.players.get(this.mpMatch.localPlayerId).name);
 	var opponentName;
-	if(mpMatch.players.get(0).name === this.mpMatch.localPlayerId){
+	if(this.mpMatch.players.get(0).name === this.mpMatch.localPlayerId){
 		opponentName = mpMatch.players.get(1).name;
 	} else {
 		opponentName = mpMatch.players.get(0).name;
 	}
 	this.opponent = new PlayerModel(opponentName);
+	
 	this.opponent.onDie = function(){
 		console.log("Congratulations, you won!");
+		self.hasEnded = true;
 	};
 	this.localPlayer.onDie = function(){
 		console.log("You lost. Better luck next time!");
+		self.hasEnded = true;
 	};
 	
 	this.mpMatch.onTurnChanged(function(player){
@@ -157,9 +166,18 @@ function Match(mpMatch){
 	this.mpMatch.bind('strike', function(data){
 		self.localPlayer.changeHealth(-data.damage);
 	});
+	this.mpMatch.onPlayerLeft(function(){
+		self.closeMatch();
+	});
+	this.mpMatch.onPlayerDisconnect(function(){
+		self.closeMatch();
+	});
 }
 Match.prototype.leave = function(){
 	this.mpMatch.leave();
+};
+Match.prototype.closeMatch = function(){
+	this.onCloseMatch();
 };
 Match.prototype.localPlayerInfo = function(){
 	console.log(this.localPlayer);
@@ -167,18 +185,38 @@ Match.prototype.localPlayerInfo = function(){
 Match.prototype.opponentInfo = function(){
 	console.log(this.opponent);
 };
-Match.prototype.action = function(action){
-	console.log(this.mpMatch.getWhosTurn());
-	console.log(this.mpMatch.localPlayerId);
-	if(this.mpMatch.getWhosTurn().playerId !== this.mpMatch.localPlayerId){
-		console.log("Wait for your turn.");
-		return;
+Match.prototype.whoseTurnIsIt = function(){
+	if(this.mpMatch.getWhosTurn().playerId === this.mpMatch.localPlayerId){
+		console.log("It is your turn.");
+	} else {
+		console.log("Not Your turn.");
 	}
-	//if(action === 'strike'){
+};
+Match.prototype.pass = function(){
+	if( this.action() ){
+		this.mpMatch.trigger('pass');
+		this.mpMatch.changeTurn();
+	}
+};
+Match.prototype.strike = function(){
+	if( this.action() ){
 		this.mpMatch.trigger('strike', {damage:10});
 		this.opponent.changeHealth(-10);
-	//}
-	this.mpMatch.changeTurn();
+		this.mpMatch.changeTurn();
+	}
+};
+Match.prototype.action = function(){/*
+	console.log(this.mpMatch.getWhosTurn());
+	console.log(this.mpMatch.localPlayerId);*/
+	if(this.mpMatch.getWhosTurn().playerId !== this.mpMatch.localPlayerId){
+		console.log("Wait for your turn.");
+		return false;
+	}
+	if(this.hasEnded){
+		console.log("The match has ended.");
+		return false;
+	}
+	return true;
 };
 
 function PlayerModel(name){
