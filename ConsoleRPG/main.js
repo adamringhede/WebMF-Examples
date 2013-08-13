@@ -49,8 +49,8 @@ function IngameUI(callbacks){
 IngameUI.prototype.getInterface = function(){
 	return {
 		exitToMenu: this.exitToMenu.bind(this),
-		me: function(){},
-		opponent: function(){},
+		me: this.match.localPlayerInfo.bind(this),
+		opponent: this.match.opponentInfo.bind(this),
 		strike: function(){},
 		turn: function(){},
 		help: function() {
@@ -131,11 +131,17 @@ LoginUI.prototype.getInterface = function(){
 
 function Match(mpMatch){
 	this.mpMatch = mpMatch;
-	this.localPlayer = new PlayerModel();
-	this.opponent = new PlayerModel();
+	this.localPlayer = new PlayerModel(this.mpMatch.players.get(this.mpMatch.localPlayerId).name);
+	var opponentName;
+	if(mpMatch.players.get(0).name === this.mpMatch.localPlayerId){
+		opponentName = newPlampMatch.players.get(1).name;
+	} else {
+		opponentName = mpMatch.players.get(0).name;
+	}
+	this.opponent = new PlayerModel(opponentName);
 	
 	this.mpMatch.onTurnChanged(function(player){
-		console.log("Changed turn to: " + player.name);
+		console.log("Turn changed to: " + player.name);
 	});
 	this.mpMatch.onStateChanged("players/" + this.mpMatch.localPlayerId, function(data){
 		this.localPlayer.update(data);
@@ -146,9 +152,13 @@ Match.prototype.leave = function(){
 };
 Match.prototype.localPlayerInfo = function(){
 	console.log(this.localPlayer);
-}
+};
+Match.prototype.opponentInfo = function(){
+	console.log(this.opponent);
+};
 
-function PlayerModel(){
+function PlayerModel(name){
+	this.name = name || "Unnamed"
 	this.health;
 	this.abilities;
 	this.attributes;
@@ -159,7 +169,10 @@ PlayerModel.prototype.update = function(data){
 	this.attributes = data.attributes;
 };
 PlayerModel.prototype.toString = function(){
-	
+	var str = "---- " + this.name + " ----\n";
+		str+= "Health:     " + this.health + "\n";
+		str+= "Attributes  " + this.attributes;
+	return str;
 }
 
 
