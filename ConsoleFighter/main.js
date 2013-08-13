@@ -103,10 +103,15 @@ MenuUI.prototype.findMatch = function(){
 		}
 	});
 };
+MenuUI.prototype.leaveQueue = function(){
+	if(this.session !== null) this.session.leaveQueue();
+	console.log("You left the queue");
+};
 MenuUI.prototype.getInterface = function(){
 	return {
 		logout: this.logout.bind(this),
 		findMatch: this.findMatch.bind(this),
+		leaveQueue: this.leaveQueue.bind(this);
 		help: function() {
 			console.log(".logout     Go to the login screen.");
 			console.log(".findMatch  Starts matchmaking");
