@@ -49,8 +49,8 @@ function IngameUI(callbacks){
 IngameUI.prototype.getInterface = function(){
 	return {
 		exitToMenu: this.exitToMenu.bind(this),
-		me: this.match.localPlayerInfo.bind(this),
-		opponent: this.match.opponentInfo.bind(this),
+		me: this.match.localPlayerInfo.bind(this.match),
+		opponent: this.match.opponentInfo.bind(this.match),
 		strike: function(){},
 		turn: function(){},
 		help: function() {
