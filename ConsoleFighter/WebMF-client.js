@@ -164,6 +164,7 @@ MPMatch.prototype.updateState = function(path, obj){
 };
 MPMatch.prototype.onStateChanged = function(arg1, arg2){
 	if((typeof arg1 == 'string' || arg1 instanceof String) && typeof arg2 == 'function') {
+		if(!this._matchStateEventHandlers[arg1]) this._matchStateEventHandlers[arg1] = [];
 		this._matchStateEventHandlers[arg1].push(arg2);
 	} else if (typeof arg1 == 'function') {
 		self._onStateChange = arg1;
@@ -208,14 +209,17 @@ MPTurnBasedMatch.prototype = Object.create(MPMatch.prototype);
 MPTurnBasedMatch.prototype.constructor = MPTurnBasedMatch;
 
 MPTurnBasedMatch.prototype.currentPlayer = null;
-MPTurnBasedMatch.prototype.whosTurn = function(){
+MPTurnBasedMatch.prototype.getWhosTurn = function(){
+	if(this.currentPlayer === null){
+		this.currentPlayer = this.players.get(this.whosTurn);
+	}
 	return this.currentPlayer;
 };
 MPTurnBasedMatch.prototype.onTurnChanged = function(turnChanged){
 	var self = this;
-	this.socket.on('turnChanged', function(player){
-		turnChanged(player);
-		self.currentPlayer = self.players.get(player.playerId) // FIND PLAYER IN COLLECTION WITH NEW METHOD
+	this.socket.on('turnChanged', function(playerId){
+		turnChanged(playerId);
+		self.currentPlayer = self.players.get(playerId);
 	});
 };
 MPTurnBasedMatch.prototype.changeTurn = function(){
@@ -385,12 +389,15 @@ MPPlayerCollection.prototype.remove = function(player){
 	return false;
 };
 MPPlayerCollection.prototype.get = function(playerId){
+	if(typeof playerId === 'number'){
+		return this.players[playerId];
+	}
 	for(var i = 0; i < this.players.length; i++){
 		if(this.players[i].playerId === playerId){
 			return this.players[i];
 		}
 	}
-	// Was not able to remove player
+	// Was not able to find player
 	return false;
 };
 MPPlayerCollection.prototype.count = function(){

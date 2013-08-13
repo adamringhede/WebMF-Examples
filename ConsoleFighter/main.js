@@ -51,7 +51,8 @@ IngameUI.prototype.getInterface = function(){
 		exitToMenu: this.exitToMenu.bind(this),
 		me: this.match.localPlayerInfo.bind(this.match),
 		opponent: this.match.opponentInfo.bind(this.match),
-		strike: function(){},
+		strike: this.match.action.bind(this.match),
+		match: this.match,
 		turn: function(){},
 		help: function() {
 			console.log(".me         Return information on the local player.");
@@ -130,21 +131,31 @@ LoginUI.prototype.getInterface = function(){
 }
 
 function Match(mpMatch){
+	var self = this;
 	this.mpMatch = mpMatch;
 	this.localPlayer = new PlayerModel(this.mpMatch.players.get(this.mpMatch.localPlayerId).name);
 	var opponentName;
 	if(mpMatch.players.get(0).name === this.mpMatch.localPlayerId){
-		opponentName = newPlampMatch.players.get(1).name;
+		opponentName = mpMatch.players.get(1).name;
 	} else {
 		opponentName = mpMatch.players.get(0).name;
 	}
 	this.opponent = new PlayerModel(opponentName);
+	this.opponent.onDie = function(){
+		console.log("Congratulations, you won!");
+	};
+	this.localPlayer.onDie = function(){
+		console.log("You lost. Better luck next time!");
+	};
 	
 	this.mpMatch.onTurnChanged(function(player){
-		console.log("Turn changed to: " + player.name);
+		console.log("Turn changed to: " + player);
 	});
 	this.mpMatch.onStateChanged("players/" + this.mpMatch.localPlayerId, function(data){
-		this.localPlayer.update(data);
+		self.localPlayer.update(data);
+	});
+	this.mpMatch.bind('strike', function(data){
+		self.localPlayer.changeHealth(-data.damage);
 	});
 }
 Match.prototype.leave = function(){
@@ -156,12 +167,27 @@ Match.prototype.localPlayerInfo = function(){
 Match.prototype.opponentInfo = function(){
 	console.log(this.opponent);
 };
+Match.prototype.action = function(action){
+	console.log(this.mpMatch.getWhosTurn());
+	console.log(this.mpMatch.localPlayerId);
+	if(this.mpMatch.getWhosTurn().playerId !== this.mpMatch.localPlayerId){
+		console.log("Wait for your turn.");
+		return;
+	}
+	//if(action === 'strike'){
+		this.mpMatch.trigger('strike', {damage:10});
+		this.opponent.changeHealth(-10);
+	//}
+	this.mpMatch.changeTurn();
+};
 
 function PlayerModel(name){
-	this.name = name || "Unnamed"
-	this.health;
-	this.abilities;
-	this.attributes;
+	console.log(name);
+	this.name = name;
+	this.health = 100;
+	this.abilities = "";
+	this.attributes = "";
+	this.onDie = function(){};
 }
 PlayerModel.prototype.update = function(data){
 	this.health = data.health;
@@ -173,7 +199,12 @@ PlayerModel.prototype.toString = function(){
 		str+= "Health:     " + this.health + "\n";
 		str+= "Attributes  " + this.attributes;
 	return str;
-}
+};
+PlayerModel.prototype.changeHealth = function(val){
+	this.health += val;
+	if(this.health < 0) this.health = 0;
+	if(this.health <= 0 && this.onDie) this.onDie();
+};
 
 
 (function(){
