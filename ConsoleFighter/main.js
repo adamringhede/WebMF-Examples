@@ -18,10 +18,15 @@ function bind(f, scope){
 function Game(){
 	var session = this.session;
 	var uis = {
-		loginUI: new LoginUI(function(s){
-			session = s;
-			uis.menuUI.session = s;
-			window.ui = uis.menuUI.getInterface();
+		loginUI: new LoginUI({
+			onLogin: function(s){
+				session = s;
+				uis.menuUI.session = s;
+				window.ui = uis.menuUI.getInterface();
+			},
+			onDisconnect: function(){
+				window.ui = uis.loginUI.getInterface();
+			}
 		}),
 		menuUI: new MenuUI(session, {
 			onLogout: function(){
@@ -120,14 +125,18 @@ MenuUI.prototype.getInterface = function(){
 };
 
 
-function LoginUI(onLogin){
-	this.onLogin = onLogin;
+function LoginUI(callbacks){
+	this.onLogin = callbacks.onLogin;
+	this.onDisconnect = callbacks.onDisconnect;
 }
 LoginUI.prototype.login = function(username){
 	var session = new MPSession(username, "Adams-MacBook-Pro.local", "8083", "ConsoleFighter"),
-		callback = this.onLogin;
+		self = this;
 	session.onConnect(function(){
-		if (callback) callback(session);
+		if (self.onLogin) self.onLogin(session);
+	});
+	session.onDisconnect(function(){
+		if (self.onDisconnect) self.onDisconnect();
 	});
 };
 LoginUI.prototype.getInterface = function(){
