@@ -13,7 +13,7 @@ function bind(f, scope){
 }
 
 /**
- * Game handles the switching between user interfaces and initiates the other game compontents
+ * Game handles the switching between user interfaces
  */
 function Game(){
 	var session = this.session;
@@ -116,7 +116,7 @@ MenuUI.prototype.getInterface = function(){
 	return {
 		logout: this.logout.bind(this),
 		findMatch: this.findMatch.bind(this),
-		leaveQueue: this.leaveQueue.bind(this);
+		leaveQueue: this.leaveQueue.bind(this),
 		help: function() {
 			console.log(".logout     Go to the login screen.");
 			console.log(".findMatch  Starts matchmaking");
@@ -134,6 +134,8 @@ LoginUI.prototype.login = function(username){
 		self = this;
 	session.onConnect(function(){
 		if (self.onLogin) self.onLogin(session);
+	}, function(){
+		console.log("could not connect")
 	});
 	session.onDisconnect(function(){
 		if (self.onDisconnect) self.onDisconnect();
